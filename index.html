@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>할 일 메모</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#f6f4ef; --card:#ffffff; --ink:#23211d; --sub:#7b756b; --line:#e5e0d5;
+  --accent:#3d6b5a; --accent-soft:#e2eee8;
+  --red:#e5484d; --red-soft:#fde9e9;
+  --yellow:#d99a0b; --yellow-soft:#fdf3d6;
+  --blue:#3b82c4; --blue-soft:#e4eef9;
+  --purple:#8a5cc7; --purple-soft:#f1e9fb;
+  --shadow:0 6px 20px rgba(40,30,10,.08);
+  --hl-red:#ffc4c4; --hl-yellow:#ffe27a; --hl-blue:#c4dcf7; --hl-purple:#e0cdf7;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#1b1a18; --card:#262421; --ink:#f1ede6; --sub:#a39d92; --line:#3a3732;
+    --accent:#6fae94; --accent-soft:#2a3a33;
+    --red:#ff6b6f; --red-soft:#3d2627;
+    --yellow:#f2b83a; --yellow-soft:#3b3220;
+    --blue:#6aa8e6; --blue-soft:#22303f;
+    --purple:#b48ae8; --purple-soft:#33283f;
+    --shadow:0 6px 20px rgba(0,0,0,.35);
+    --hl-red:rgba(255,107,111,.4); --hl-yellow:rgba(242,184,58,.4); --hl-blue:rgba(106,168,230,.4); --hl-purple:rgba(180,138,232,.4);
+  }
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--bg);color:var(--ink);
+  font-family:'Noto Sans KR',system-ui,-apple-system,'Malgun Gothic',sans-serif;}
+button,input,select{font:inherit;color:inherit}
+#app{max-width:760px;margin:0 auto;padding:16px 16px 56px;}
+
+/* 헤더 */
+.hdr{display:flex;align-items:center;justify-content:space-between;gap:8px;
+  padding-bottom:12px;border-bottom:1px solid var(--line)}
+.brand{display:flex;align-items:center;gap:10px;min-width:0}
+.brand-mark{width:30px;height:30px;border-radius:9px;background:var(--accent);color:#fff;display:grid;place-items:center;
+  font-weight:900;font-size:1rem;flex:none}
+.brand-name{margin:0;font-weight:900;font-size:1.15rem;letter-spacing:-.03em;white-space:nowrap;line-height:1.15}
+.brand-sub{display:block;font-weight:500;font-size:.78rem;color:var(--sub);letter-spacing:0;margin-top:3px;white-space:nowrap}
+.hdr .btn{background:transparent}
+/* 메인(목록) 화면에서는 앱 제목을 크게 */
+.hdr.home{padding:14px 0 18px;align-items:flex-end}
+.hdr.home .brand{gap:14px}
+.hdr.home .brand-mark{width:46px;height:46px;border-radius:13px;font-size:1.5rem}
+.hdr.home .brand-name{font-size:clamp(1.7rem,6vw,2.2rem)}
+.btn{border:1px solid var(--line);background:var(--card);padding:7px 12px;border-radius:10px;
+  cursor:pointer;font-size:.88rem;white-space:nowrap;transition:background .15s}
+.btn:hover{background:var(--accent-soft)}
+.btn.primary{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.pinned{background:var(--accent);border-color:var(--accent);color:#fff}
+.btn-text{background:none;border:none;cursor:pointer;color:var(--sub);font-size:.9rem;padding:6px 4px}
+.btn-text:hover{color:var(--ink)}
+.btn-text.danger:hover,.btn-text.warn{color:var(--red)}
+
+/* 카테고리 칩 */
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:14px 0}
+.chip{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:6px 13px;
+  cursor:pointer;font-size:.9rem;display:inline-flex;align-items:center;gap:6px}
+.chip .cnt{font-size:.75rem;color:var(--sub)}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.chip.on .cnt{color:var(--bg);opacity:.7}
+.chip.ghost{background:transparent}
+
+/* 패널(카테고리 관리, 새 메모) */
+.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px;box-shadow:var(--shadow)}
+.panel h3{margin:0 0 10px;font-size:1rem}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.field{border:1px solid var(--line);background:var(--bg);border-radius:10px;padding:9px 12px;outline:none;min-width:0}
+.field:focus{border-color:var(--accent)}
+.field.grow{flex:1}
+.field.emoji{width:56px;text-align:center}
+.cat-row{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px dashed var(--line)}
+.cat-row:last-of-type{border-bottom:none}
+.cat-row span{flex:1}
+
+/* 메모 목록 */
+.add-memo{width:100%;padding:14px;border:2px dashed var(--line);border-radius:14px;background:transparent;
+  color:var(--sub);font-weight:700;cursor:pointer;font-size:.98rem}
+.add-memo:hover{border-color:var(--accent);color:var(--accent)}
+.memo-list{display:grid;gap:10px;margin-top:12px;grid-template-columns:repeat(auto-fill,minmax(240px,1fr))}
+.memo-card{text-align:left;background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;
+  cursor:pointer;transition:transform .15s, box-shadow .15s;display:flex;flex-direction:column;gap:6px}
+.memo-card:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+.mc-top{display:flex;justify-content:space-between;align-items:center;gap:6px}
+.tag{font-size:.75rem;background:var(--accent-soft);color:var(--accent);padding:3px 9px;border-radius:999px;font-weight:700}
+.imp{font-size:.75rem;color:var(--red);font-weight:700}
+.mc-title{font-weight:800;font-size:1.12rem;line-height:1.35;word-break:break-word}
+.mc-preview{font-size:.85rem;color:var(--sub);line-height:1.5;min-height:1.2em}
+.mc-preview div{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-meta{font-size:.75rem;color:var(--sub)}
+.memo-card.complete{opacity:.65}
+.memo-card.complete .mc-title{text-decoration:line-through}
+.bar{height:6px;background:var(--line);border-radius:99px;overflow:hidden}
+.bar i{display:block;height:100%;background:var(--accent);border-radius:99px;transition:width .3s}
+.empty{grid-column:1/-1;text-align:center;color:var(--sub);padding:40px 10px;line-height:1.7}
+.foot{margin-top:28px;text-align:center;font-size:.82rem;color:var(--sub)}
+.foot .btn-text{font-size:.82rem}
+
+/* 메모 상세 */
+.d-bar{display:flex;align-items:center;gap:8px;margin-top:12px;flex-wrap:wrap}
+.d-bar .spacer{flex:1}
+.cat-select{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:5px 10px;font-size:.85rem;cursor:pointer}
+.d-title{font-size:clamp(1.8rem,7vw,2.7rem);font-weight:900;line-height:1.2;letter-spacing:-.03em;
+  margin:18px 0 12px;padding-bottom:12px;border-bottom:4px solid var(--accent);cursor:text;word-break:break-word}
+.d-title:hover{color:var(--accent)}
+.title-input{width:100%;font-size:clamp(1.8rem,7vw,2.7rem);font-weight:900;letter-spacing:-.03em;
+  margin:18px 0 12px;padding:0 0 12px;border:none;border-bottom:4px dashed var(--accent);background:transparent;outline:none}
+.d-progress{display:flex;align-items:center;gap:10px;font-size:.88rem;color:var(--sub)}
+.d-progress .bar{flex:1;height:8px}
+
+/* 메모 안 묶음 + 할 일 목록 (깔끔한 체크리스트형) */
+.groups{margin:22px 0 8px}
+.group{margin-bottom:22px}
+.g-head{display:flex;align-items:center;gap:8px;padding:2px 2px 7px;border-bottom:2px solid var(--ink)}
+.g-name{font-weight:800;font-size:1.02rem}
+.g-count{font-size:.78rem;color:var(--sub)}
+.g-head .spacer{flex:1}
+.g-head .icon{opacity:.25}
+.g-head:hover .icon{opacity:1}
+.g-input{flex:1;min-width:0;font-weight:800;font-size:1.02rem;border:none;border-bottom:2px dashed var(--accent);
+  background:transparent;outline:none;padding:0}
+.items{list-style:none;padding:0;margin:0}
+.item{display:flex;align-items:center;gap:12px;padding:9px 6px;border-bottom:1px solid var(--line);position:relative;border-radius:6px}
+.item:hover{background:rgba(127,127,127,.07)}
+.check{width:20px;height:20px;border-radius:50%;border:2px solid var(--sub);background:transparent;flex:none;
+  cursor:pointer;color:#fff;font-weight:900;font-size:.68rem;display:grid;place-items:center;padding:0}
+.check:hover{border-color:var(--accent)}
+.item.done .check{background:var(--accent);border-color:var(--accent)}
+.txt{flex:1;cursor:pointer;line-height:1.55;word-break:break-word;user-select:none}
+.txt .em{margin-right:5px}
+.txt .hl{padding:0 2px;border-radius:2px;-webkit-box-decoration-break:clone;box-decoration-break:clone}
+.item[class*="c-"] .hl{font-weight:700}
+.item.c-red .hl{background:linear-gradient(transparent 45%, var(--hl-red) 45%)}
+.item.c-yellow .hl{background:linear-gradient(transparent 45%, var(--hl-yellow) 45%)}
+.item.c-blue .hl{background:linear-gradient(transparent 45%, var(--hl-blue) 45%)}
+.item.c-purple .hl{background:linear-gradient(transparent 45%, var(--hl-purple) 45%)}
+.item.done .txt{color:var(--sub)}
+.item.done .hl{text-decoration:line-through;text-decoration-thickness:2px;opacity:.7}
+.edit-item{flex:1;border:none;border-bottom:1px solid var(--accent);padding:2px 0;background:transparent;outline:none;min-width:0}
+.add-row{display:flex;align-items:center;gap:12px;padding:9px 6px;color:var(--sub);cursor:pointer;border-radius:6px;
+  font-size:.92rem;background:none;border:none;width:100%;text-align:left}
+.add-row:hover{color:var(--accent);background:rgba(127,127,127,.07)}
+.add-row .plus{width:20px;text-align:center;font-weight:700;flex:none}
+.add-live{display:flex;align-items:center;gap:12px;padding:7px 6px;border-bottom:1px solid var(--accent)}
+.add-live .check{border-style:dashed;cursor:default}
+.add-live input{flex:1;min-width:0;border:none;background:transparent;outline:none;padding:3px 0}
+.add-group{display:block;margin:4px 0 0;padding:8px 14px;border:1px dashed var(--line);border-radius:10px;background:none;
+  color:var(--sub);cursor:pointer;font-size:.88rem}
+.add-group:hover{border-color:var(--accent);color:var(--accent)}
+.mark-menu .mv{border:1px solid var(--line);background:var(--bg);border-radius:999px;padding:3px 10px;font-size:.8rem;cursor:pointer}
+.mark-menu .mv.sel{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* 고정 보드 */
+.pin-btn{background:none;border:none;cursor:pointer;opacity:.25;font-size:.9rem;padding:2px 4px;border-radius:6px}
+.pin-btn:hover{opacity:.7;background:rgba(127,127,127,.12)}
+.pin-btn.on{opacity:1}
+.btn-text.on{color:var(--accent);font-weight:700}
+.board-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:12px 0 10px;font-size:.85rem;color:var(--sub)}
+.board-head select{border:1px solid var(--line);background:var(--card);border-radius:999px;padding:4px 8px;font-size:.8rem;max-width:55%}
+.pin-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin-bottom:10px}
+.pin-title{display:flex;align-items:center;gap:4px}
+.pin-title h2{flex:1;margin:0;font-size:1.22rem;font-weight:900;letter-spacing:-.02em;cursor:pointer;word-break:break-word;line-height:1.3}
+.pin-card .bar{margin:6px 0 2px;height:4px}
+.pin-card .item{padding:6px 2px}
+.pin-card .item:last-child{border-bottom:none}
+.pin-group{font-size:.78rem;font-weight:800;color:var(--sub);margin:10px 0 0;padding-bottom:3px;border-bottom:1px solid var(--line)}
+.pin-card .icon{opacity:.45}
+
+/* 사용법 안내 */
+.help{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px 18px;margin-top:14px;box-shadow:var(--shadow)}
+.help h3{margin:0 0 10px;font-size:1.05rem;display:flex;justify-content:space-between;align-items:center}
+.help ul{margin:0;padding-left:1.1em;line-height:1.85;font-size:.9rem}
+.help b{color:var(--accent)}
+.icon{opacity:.3;background:none;border:none;cursor:pointer;font-size:.95rem;padding:4px;border-radius:6px;flex:none}
+.item:hover .icon,.icon.active{opacity:1}
+.icon:hover{background:rgba(127,127,127,.15)}
+@media (hover:none){.icon{opacity:.75}}
+
+.mark-menu{position:absolute;right:6px;top:calc(100% + 4px);z-index:10;background:var(--card);border:1px solid var(--line);
+  border-radius:12px;box-shadow:var(--shadow);padding:10px;width:228px}
+.mark-menu p{margin:0 0 6px;font-size:.75rem;color:var(--sub)}
+.mark-menu .row{gap:6px;margin-bottom:8px}
+.sw{width:30px;height:30px;border-radius:50%;border:3px solid transparent;cursor:pointer;padding:0}
+.sw.sel{border-color:var(--ink)}
+.sw.red{background:var(--red)} .sw.yellow{background:var(--yellow)} .sw.blue{background:var(--blue)} .sw.purple{background:var(--purple)}
+.emo{width:32px;height:32px;border:2px solid transparent;border-radius:8px;background:var(--bg);cursor:pointer;font-size:1.05rem;padding:0}
+.emo.sel{border-color:var(--ink)}
+
+.hint{font-size:.78rem;color:var(--sub);margin:8px 2px 0}
+
+#toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%) translateY(20px);background:var(--ink);color:var(--bg);
+  padding:10px 16px;border-radius:10px;font-size:.88rem;opacity:0;pointer-events:none;transition:.25s;max-width:90vw;text-align:center;line-height:1.5}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+#pinned-msg{display:none;text-align:center;padding:80px 20px;color:var(--sub);line-height:1.8}
+#pinned-msg.show{display:block}
+#pinned-msg b{color:var(--ink);font-size:1.2rem}
+
+/* 고정 창(좁은 화면)용 압축 레이아웃 */
+@media (max-width:460px){
+  #app{padding:10px 10px 40px}
+  .brand-sub{display:none}
+  .hdr.home .brand-sub{display:block}
+  .hdr.home{flex-wrap:wrap}
+  .memo-list{grid-template-columns:1fr}
+  .memo-card{padding:11px 12px}
+  .mc-preview{display:none}
+  .d-title{margin:12px 0 8px}
+  .hdr .btn{padding:6px 9px;font-size:.8rem}
+}
+</style>
+</head>
+<body>
+<div id="host">
+  <div id="app">
+    <header class="hdr" id="hdr"></header>
+    <main id="view"></main>
+    <div id="toast"></div>
+    <input type="file" id="importFile" accept=".json,application/json" hidden>
+  </div>
+</div>
+<div id="pinned-msg">
+  <b>📌 메모가 고정 창에서 열려 있어요</b><br>
+  고정 창을 닫으면 여기로 돌아옵니다.<br><br>
+  <button class="btn" id="unpinBtn">이 창으로 되돌리기</button>
+</div>
+
+<script>
+(function(){
+const KEY = 'hy-todo-memo-v1';
+const COLORS = ['red','yellow','blue','purple'];
+const COLOR_NAMES = {red:'빨강',yellow:'노랑',blue:'파랑',purple:'보라'};
+const EMOJIS = ['⭐','🔥','❗','📌','⏰','💡','✅','💬'];
+
+const app = document.getElementById('app');
+const hdr = document.getElementById('hdr');
+const viewEl = document.getElementById('view');
+const toastEl = document.getElementById('toast');
+const importFile = document.getElementById('importFile');
+
+const uid = () => Math.random().toString(36).slice(2,8) + Date.now().toString(36).slice(-4);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+function defaultState(){
+  const c1={id:uid(),name:'업무',emoji:'💼'}, c2={id:uid(),name:'수업',emoji:'📚'}, c3={id:uid(),name:'개인',emoji:'🏠'};
+  return { categories:[c1,c2,c3], memos:[] };
+}
+function load(){
+  try{
+    const s=JSON.parse(localStorage.getItem(KEY));
+    if(s && Array.isArray(s.memos) && Array.isArray(s.categories)){
+      s.memos = s.memos.filter(m=>m.title!=='사용법 안내 👋'); // 이전 버전의 예시 메모 정리
+      s.memos.forEach(m=>{ if(!Array.isArray(m.groups)) m.groups=[]; });
+      return s;
+    }
+  }catch(e){}
+  return defaultState();
+}
+function save(){ try{ localStorage.setItem(KEY, JSON.stringify(state)); }catch(e){ toast('저장 공간을 쓸 수 없어요. 백업 내보내기를 이용해 주세요.'); } }
+
+let state = load();
+let view = {name:'home', cat:'all', memoId:null};
+let ui = {addingMemo:false, editingCats:false, markMenu:null, editItem:null, editTitle:false, confirmDel:null,
+          help:false, addTo:null, editGroup:null};
+const NONE = '_none'; // 묶음 없는 할 일
+let pipWin = null;
+let prevView = null;
+const collapsed = {};
+let focusSel = null;
+
+const catOf = id => state.categories.find(c=>c.id===id);
+const memoOf = id => state.memos.find(m=>m.id===id);
+const curMemo = () => memoOf(view.memoId);
+const isComplete = m => m.items.length>0 && m.items.every(i=>i.done);
+const touch = m => { m.updated = Date.now(); };
+
+function fmtDate(t){
+  const d=new Date(t), now=new Date();
+  if(d.toDateString()===now.toDateString()) return '오늘 '+d.toLocaleTimeString('ko-KR',{hour:'numeric',minute:'2-digit'});
+  return (d.getMonth()+1)+'월 '+d.getDate()+'일';
+}
+
+/* ---------- 렌더링 ---------- */
+function render(){
+  const isHome = view.name==='home';
+  hdr.className = 'hdr' + (isHome ? ' home' : '');
+  const left = state.memos.reduce((n,m)=>n+m.items.filter(i=>!i.done).length, 0);
+  const today = new Date().toLocaleDateString('ko-KR',{month:'long',day:'numeric',weekday:'long'});
+  hdr.innerHTML = `
+    <div class="brand">
+      <span class="brand-mark" aria-hidden="true">✓</span>
+      <div>
+        <h1 class="brand-name">할 일 메모</h1>
+        ${isHome ? `<span class="brand-sub">${today} · 남은 할 일 ${left}개</span>` : ''}
+      </div>
+    </div>
+    <div class="row">
+      <button class="btn ${ui.help?'pinned':''}" data-a="help" title="사용법 안내">❓ 사용법</button>
+      <button class="btn ${pipWin?'pinned':''}" data-a="pin" title="다른 창 위에 항상 떠 있는 작은 창으로 열기">
+        ${pipWin?'📌 고정 해제':'📌 화면 고정'}</button>
+    </div>`;
+  viewEl.innerHTML = (ui.help?renderHelp():'') +
+    (view.name==='board' ? renderBoard() : view.name==='detail' ? renderDetail() : renderHome());
+  if(focusSel){
+    const el = app.querySelector(focusSel);
+    if(el){ el.focus(); if(el.select && focusSel!=='#newItem') el.select(); }
+    focusSel = null;
+  }
+}
+
+function renderHome(){
+  let memos = state.memos.filter(m => view.cat==='all' || m.catId===view.cat || (view.cat==='none' && !catOf(m.catId)));
+  memos.sort((a,b)=>{ const da=isComplete(a), db=isComplete(b); if(da!==db) return da-db; return b.updated-a.updated; });
+  const uncategorized = state.memos.filter(m=>!catOf(m.catId)).length;
+  return `
+    <div class="chips">
+      <button class="chip ${view.cat==='all'?'on':''}" data-a="cat" data-id="all">전체 <span class="cnt">${state.memos.length}</span></button>
+      ${state.categories.map(c=>`<button class="chip ${view.cat===c.id?'on':''}" data-a="cat" data-id="${c.id}">${esc(c.emoji)} ${esc(c.name)} <span class="cnt">${state.memos.filter(m=>m.catId===c.id).length}</span></button>`).join('')}
+      ${uncategorized?`<button class="chip ${view.cat==='none'?'on':''}" data-a="cat" data-id="none">미분류 <span class="cnt">${uncategorized}</span></button>`:''}
+      <button class="chip ghost" data-a="manageCats" title="카테고리 추가·삭제">⚙️ 카테고리</button>
+    </div>
+    ${ui.editingCats?renderCatManager():''}
+    ${ui.addingMemo?renderNewMemo():`<button class="add-memo" data-a="openNewMemo">＋ 새 메모 만들기</button>`}
+    <div class="memo-list">
+      ${memos.length ? memos.map(memoCard).join('') : `<div class="empty">아직 메모가 없어요.<br>‘새 메모 만들기’를 눌러 시작해 보세요 ✍️</div>`}
+    </div>
+    <div class="foot">
+      데이터는 이 브라우저에 자동 저장돼요 ·
+      <button class="btn-text" data-a="export">⬇ 백업 내보내기</button> ·
+      <button class="btn-text" data-a="import">⬆ 백업 불러오기</button>
+    </div>`;
+}
+
+function memoCard(m){
+  const c = catOf(m.catId);
+  const total=m.items.length, done=m.items.filter(i=>i.done).length;
+  const imp = m.items.filter(i=>!i.done && (i.color||i.emoji)).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const preview = m.items.filter(i=>!i.done).slice(0,2).map(i=>`<div>${i.emoji?esc(i.emoji)+' ':'· '}${esc(i.text)}</div>`).join('');
+  return `
+    <div class="memo-card ${isComplete(m)?'complete':''}" data-a="open" data-id="${m.id}" role="button" tabindex="0">
+      <div class="mc-top">
+        <span class="tag">${c?esc(c.emoji+' '+c.name):'미분류'}</span>
+        <span class="row" style="gap:4px">${imp?`<span class="imp">🔥 중요 ${imp}</span>`:''}
+          <button class="pin-btn ${m.pinned?'on':''}" data-a="pinMemo" data-id="${m.id}" title="${m.pinned?'고정 보드에서 빼기':'고정 보드에 추가'}">📌</button></span>
+      </div>
+      <div class="mc-title">${esc(m.title)}</div>
+      <div class="mc-preview">${preview || (total?'모두 완료했어요 🎉':'')}</div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      <div class="mc-meta">${total?`${done}/${total} 완료`:'항목 없음'} · ${fmtDate(m.updated)}</div>
+    </div>`;
+}
+
+function renderCatManager(){
+  return `
+    <div class="panel">
+      <h3>카테고리 관리</h3>
+      ${state.categories.map(c=>`
+        <div class="cat-row"><span>${esc(c.emoji)} ${esc(c.name)}</span>
+          <button class="btn-text ${ui.confirmDel===c.id?'warn':'danger'}" data-a="delCat" data-id="${c.id}">
+            ${ui.confirmDel===c.id?'한 번 더 누르면 삭제':'삭제'}</button></div>`).join('')}
+      <div class="row" style="margin-top:10px">
+        <input class="field emoji" id="newCatEmoji" placeholder="🙂" maxlength="4">
+        <input class="field grow" id="newCatName" placeholder="새 카테고리 이름 (예: 담임업무)">
+        <button class="btn primary" data-a="addCat">추가</button>
+        <button class="btn" data-a="manageCats">닫기</button>
+      </div>
+      <p class="hint">카테고리를 지워도 메모는 ‘미분류’로 남아요.</p>
+    </div>`;
+}
+
+function renderNewMemo(){
+  const def = (view.cat!=='all' && view.cat!=='none') ? view.cat : (state.categories[0]?.id || '');
+  return `
+    <div class="panel">
+      <h3>새 메모</h3>
+      <div class="row">
+        <input class="field grow" id="newMemoTitle" placeholder="제목 (예: 이번 주 꼭 할 일)">
+        <select class="field" id="newMemoCat">
+          ${state.categories.map(c=>`<option value="${c.id}" ${c.id===def?'selected':''}>${esc(c.emoji)} ${esc(c.name)}</option>`).join('')}
+          <option value="" ${def===''?'selected':''}>미분류</option>
+        </select>
+      </div>
+      <div class="row" style="margin-top:10px;justify-content:flex-end">
+        <button class="btn" data-a="cancelNewMemo">취소</button>
+        <button class="btn primary" data-a="createMemo">만들기</button>
+      </div>
+    </div>`;
+}
+
+function renderDetail(){
+  const m = curMemo();
+  if(!m){ view.name='home'; return renderHome(); }
+  const total=m.items.length, done=m.items.filter(i=>i.done).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  return `
+    <div class="d-bar">
+      <button class="btn-text" data-a="back">${pipWin?'← 고정 보드':'← 목록'}</button>
+      <select class="cat-select" id="memoCat" aria-label="카테고리">
+        ${state.categories.map(c=>`<option value="${c.id}" ${c.id===m.catId?'selected':''}>${esc(c.emoji)} ${esc(c.name)}</option>`).join('')}
+        <option value="" ${catOf(m.catId)?'':'selected'}>미분류</option>
+      </select>
+      <span class="spacer"></span>
+      <button class="btn-text ${m.pinned?'on':''}" data-a="pinMemo" data-id="${m.id}">${m.pinned?'📌 고정됨':'📌 고정 보드에 추가'}</button>
+      <button class="btn-text ${ui.confirmDel===m.id?'warn':'danger'}" data-a="delMemo">
+        ${ui.confirmDel===m.id?'한 번 더 누르면 삭제':'🗑 메모 삭제'}</button>
+    </div>
+    ${ui.editTitle
+      ? `<input class="title-input" id="titleEdit" value="${esc(m.title)}" aria-label="제목">`
+      : `<h1 class="d-title" data-a="editTitle" title="눌러서 제목 수정">${esc(m.title)}</h1>`}
+    <div class="d-progress"><div class="bar"><i style="width:${pct}%"></i></div><span>${total?`${done}/${total} 완료`:'항목을 추가해 보세요'}</span></div>
+    <div class="groups">
+      ${renderLoose(m)}
+      ${m.groups.map(g=>renderGroup(m,g)).join('')}
+      <button class="add-group" data-a="addGroup">＋ 묶음 추가</button>
+    </div>
+    ${done?`<button class="btn-text" data-a="clearDone" style="margin-top:6px">✓ 완료한 항목 모두 지우기</button>`:''}`;
+}
+
+/* 묶음 없는 할 일: 묶음이 없거나, 묶음 밖 할 일이 있을 때만 보임 */
+function renderLoose(m){
+  const items = m.items.filter(i=>!i.secId || !m.groups.some(g=>g.id===i.secId));
+  if(m.groups.length && !items.length && ui.addTo!==NONE) return '';
+  return `<div class="group"><ul class="items">${items.map(itemRow).join('')}</ul>${addRow(NONE)}</div>`;
+}
+function renderGroup(m,g){
+  const items = m.items.filter(i=>i.secId===g.id);
+  const done = items.filter(i=>i.done).length;
+  const head = ui.editGroup===g.id
+    ? `<input class="g-input" id="g-edit-${g.id}" data-id="${g.id}" value="${esc(g.name)}" placeholder="묶음 이름">`
+    : `<span class="g-name">${esc(g.name)}</span><span class="g-count">${items.length?`${done}/${items.length}`:''}</span>
+       <span class="spacer"></span>
+       <button class="icon" data-a="editGroup" data-id="${g.id}" title="이름 바꾸기">✏️</button>
+       <button class="icon" data-a="delGroup" data-id="${g.id}" title="묶음 삭제 (할 일은 남아요)">${ui.confirmDel===g.id?'❗':'✕'}</button>`;
+  return `<div class="group"><div class="g-head">${head}</div>
+    <ul class="items">${items.map(itemRow).join('')}</ul>${addRow(g.id)}</div>`;
+}
+function addRow(secId){
+  if(ui.addTo===secId) return `
+    <div class="add-live"><span class="check"></span>
+      <input id="newItem" placeholder="할 일을 적고 Enter ↵  (맨 앞에 ! = 중요)" autocomplete="off"></div>`;
+  return `<button class="add-row" data-a="openAdd" data-id="${secId}"><span class="plus">＋</span>할 일 추가</button>`;
+}
+
+/* 고정 창 안에서 보이는 보드: 고정한 메모들만 모아서 */
+function renderBoard(){
+  const pins = state.memos.filter(m=>m.pinned).sort((a,b)=>(a.pinnedAt||0)-(b.pinnedAt||0));
+  const others = state.memos.filter(m=>!m.pinned);
+  return `
+    <div class="board-head">
+      <span>📌 고정한 메모 ${pins.length}개</span>
+      ${others.length?`<select id="pinAdd"><option value="">＋ 메모 추가</option>
+        ${others.map(m=>`<option value="${m.id}">${esc(m.title)}</option>`).join('')}</select>`:''}
+    </div>
+    ${pins.length ? pins.map(pinCard).join('') : `<div class="empty">고정한 메모가 없어요.<br>위의 ‘＋ 메모 추가’로 골라 주세요.</div>`}`;
+}
+function pinCard(m){
+  const total=m.items.length, done=m.items.filter(i=>i.done).length;
+  const pct = total ? Math.round(done/total*100) : 0;
+  const row = it => `
+    <li class="item ${it.done?'done':''} ${it.color?'c-'+it.color:''}">
+      <button class="check" data-a="toggle" data-mid="${m.id}" data-id="${it.id}" aria-label="완료 표시">${it.done?'✓':''}</button>
+      <span class="txt" data-a="toggle" data-mid="${m.id}" data-id="${it.id}">${it.emoji?`<span class="em">${esc(it.emoji)}</span>`:''}<span class="hl">${esc(it.text)}</span></span>
+    </li>`;
+  let body = '';
+  if(!collapsed[m.id]){
+    const loose = m.items.filter(i=>!i.secId || !m.groups.some(g=>g.id===i.secId));
+    body = `<ul class="items">${loose.map(row).join('')}</ul>` +
+      m.groups.map(g=>{ const its=m.items.filter(i=>i.secId===g.id); if(!its.length) return '';
+        return `<div class="pin-group">${esc(g.name)}</div><ul class="items">${its.map(row).join('')}</ul>`; }).join('') +
+      (total?'':`<p class="hint">할 일이 없어요. ✏️로 열어 추가하세요.</p>`);
+  }
+  return `
+    <div class="pin-card">
+      <div class="pin-title">
+        <h2 data-a="collapse" data-id="${m.id}" title="접기/펼치기">${collapsed[m.id]?'▸ ':''}${esc(m.title)}</h2>
+        <button class="icon" data-a="open" data-id="${m.id}" title="열어서 편집">✏️</button>
+        <button class="icon" data-a="pinMemo" data-id="${m.id}" title="고정 보드에서 빼기">✕</button>
+      </div>
+      <div class="bar"><i style="width:${pct}%"></i></div>
+      ${body}
+    </div>`;
+}
+
+function renderHelp(){
+  return `
+    <div class="help">
+      <h3>❓ 사용법 <button class="btn-text" data-a="help">닫기 ✕</button></h3>
+      <ul>
+        <li><b>메모 만들기</b> · ‘새 메모 만들기’에서 제목과 카테고리를 정해요. ⚙️ 카테고리에서 카테고리를 추가·삭제할 수 있어요.</li>
+        <li><b>할 일 추가</b> · 메모 안에서 <b>＋ 할 일 추가</b>를 누르고 입력 후 Enter. 계속 입력하면 연달아 추가돼요.</li>
+        <li><b>묶음</b> · <b>＋ 묶음 추가</b>로 메모 안의 할 일을 주제별로 나눌 수 있어요. 묶음마다 ‘할 일 추가’가 따로 있어요.</li>
+        <li><b>완료(취소선)</b> · 할 일 글자나 동그라미를 누르면 취소선, 다시 누르면 취소.</li>
+        <li><b>중요 강조</b> · 🎨 버튼에서 형광펜 색·이모티콘을 고르거나, 입력할 때 맨 앞에 <b>!</b> 를 붙여요. 다른 묶음으로 옮기기도 여기서 해요.</li>
+        <li><b>수정·삭제</b> · 제목은 눌러서 수정, 할 일은 ✏️ / ✕ 버튼으로.</li>
+        <li><b>화면 고정</b> · 메모 카드나 메모 안의 <b>📌</b>로 고정할 메모를 고른 뒤, 위의 <b>📌 화면 고정</b>을 누르면 고른 메모들만 모인 작은 창이 다른 프로그램 위에 항상 떠 있어요 (크롬·엣지). 창 안에서 체크, 접기/펼치기, ✏️ 편집, 메모 추가·빼기를 할 수 있어요.</li>
+        <li><b>백업</b> · 내용은 이 브라우저에 자동 저장돼요. 목록 화면 아래의 ‘백업 내보내기’로 가끔 저장해 두세요.</li>
+      </ul>
+    </div>`;
+}
+
+function itemRow(it){
+  const cls = ['item']; if(it.done) cls.push('done'); if(it.color) cls.push('c-'+it.color);
+  const editing = ui.editItem===it.id;
+  return `
+    <li class="${cls.join(' ')}">
+      <button class="check" data-a="toggle" data-id="${it.id}" aria-label="완료 표시">${it.done?'✓':''}</button>
+      ${editing
+        ? `<input class="edit-item" id="edit-${it.id}" data-id="${it.id}" value="${esc(it.text)}">`
+        : `<span class="txt" data-a="toggle" data-id="${it.id}">${it.emoji?`<span class="em">${esc(it.emoji)}</span>`:''}<span class="hl">${esc(it.text)}</span></span>`}
+      <button class="icon ${ui.markMenu===it.id?'active':''}" data-a="mark" data-id="${it.id}" title="강조·묶음 이동">🎨</button>
+      <button class="icon" data-a="editItem" data-id="${it.id}" title="수정">✏️</button>
+      <button class="icon" data-a="delItem" data-id="${it.id}" title="삭제">✕</button>
+      ${ui.markMenu===it.id?markMenu(it):''}
+    </li>`;
+}
+
+function markMenu(it){
+  return `
+    <div class="mark-menu">
+      <p>강조 색</p>
+      <div class="row">${COLORS.map(c=>`<button class="sw ${c} ${it.color===c?'sel':''}" data-a="setColor" data-id="${it.id}" data-v="${c}" title="${COLOR_NAMES[c]}"></button>`).join('')}</div>
+      <p>이모티콘</p>
+      <div class="row">${EMOJIS.map(e=>`<button class="emo ${it.emoji===e?'sel':''}" data-a="setEmoji" data-id="${it.id}" data-v="${e}">${e}</button>`).join('')}</div>
+      ${(()=>{ const gs=curMemo().groups; if(!gs.length) return '';
+        const cur = gs.some(g=>g.id===it.secId) ? it.secId : '';
+        return `<p>묶음 이동</p><div class="row">
+          ${gs.map(g=>`<button class="mv ${cur===g.id?'sel':''}" data-a="moveTo" data-id="${it.id}" data-v="${g.id}">${esc(g.name)}</button>`).join('')}
+          <button class="mv ${cur===''?'sel':''}" data-a="moveTo" data-id="${it.id}" data-v="">묶음 없음</button></div>`; })()}
+      <button class="btn-text" data-a="clearMark" data-id="${it.id}">강조 모두 지우기</button>
+    </div>`;
+}
+
+/* ---------- 동작 ---------- */
+function toast(msg){
+  toastEl.textContent = msg; toastEl.classList.add('show');
+  clearTimeout(toast._t); toast._t = setTimeout(()=>toastEl.classList.remove('show'), 2600);
+}
+const findItem = id => curMemo()?.items.find(i=>i.id===id);
+
+function addItem(){
+  const input = app.querySelector('#newItem'); const m = curMemo();
+  if(!input || !m) return;
+  let text = input.value.trim(); if(!text) return;
+  let color='', emoji='';
+  if(text.startsWith('!') || text.startsWith('！')){ text=text.slice(1).trim(); color='red'; }
+  if(!text) return;
+  const secId = (ui.addTo && ui.addTo!==NONE) ? ui.addTo : '';
+  m.items.push({id:uid(), text, done:false, color, emoji, secId}); touch(m); save();
+  focusSel = '#newItem'; render();
+}
+function createMemo(){
+  const t = app.querySelector('#newMemoTitle'); const c = app.querySelector('#newMemoCat');
+  const title = t.value.trim();
+  if(!title){ toast('제목을 입력해 주세요'); t.focus(); return; }
+  const m = {id:uid(), catId:c.value||null, title, items:[], groups:[], created:Date.now(), updated:Date.now()};
+  state.memos.push(m); save();
+  ui.addingMemo=false; ui.addTo=NONE; view={...view, name:'detail', memoId:m.id};
+  focusSel = '#newItem'; render();
+}
+function addCat(){
+  const n = app.querySelector('#newCatName'), e = app.querySelector('#newCatEmoji');
+  const name = n.value.trim(); if(!name){ n.focus(); return; }
+  state.categories.push({id:uid(), name, emoji:e.value.trim()||'📁'}); save();
+  focusSel = '#newCatName'; render();
+}
+function commitTitle(){
+  const el = app.querySelector('#titleEdit'); const m = curMemo();
+  if(el && m){ const v=el.value.trim(); if(v && v!==m.title){ m.title=v; touch(m); save(); } }
+  ui.editTitle=false; render();
+}
+function commitItem(id){
+  const el = app.querySelector('#edit-'+id); const it = findItem(id);
+  if(el && it){ const v=el.value.trim(); if(v){ it.text=v; touch(curMemo()); save(); } }
+  ui.editItem=null; render();
+}
+function commitGroup(id){
+  const el = app.querySelector('#g-edit-'+id); const m = curMemo(); const g = m?.groups.find(x=>x.id===id);
+  if(el && g){ const v=el.value.trim(); if(v){ g.name=v; touch(m); save(); } }
+  ui.editGroup=null; render();
+}
+
+app.addEventListener('click', e=>{
+  const t = e.target.closest('[data-a]');
+  if(!t){
+    if(ui.markMenu && !e.target.closest('.mark-menu')){ ui.markMenu=null; render(); }
+    return;
+  }
+  const a = t.dataset.a, id = t.dataset.id;
+  if(a!=='delMemo' && a!=='delCat' && a!=='delGroup') ui.confirmDel=null;
+  const m = curMemo();
+  switch(a){
+    case 'pin': togglePin(); return;
+    case 'help': ui.help=!ui.help; break;
+    case 'pinMemo': { const mm=memoOf(id); mm.pinned=!mm.pinned; if(mm.pinned) mm.pinnedAt=Date.now(); save();
+      if(!pipWin) toast(mm.pinned?'📌 고정 보드에 추가했어요':'고정 보드에서 뺐어요'); break; }
+    case 'collapse': collapsed[id]=!collapsed[id]; break;
+    case 'openAdd': ui.addTo=id; ui.markMenu=null; focusSel='#newItem'; break;
+    case 'addGroup': {
+      const g={id:uid(), name:'새 묶음'}; m.groups.push(g); touch(m); save();
+      ui.editGroup=g.id; ui.addTo=null; focusSel='#g-edit-'+g.id; break; }
+    case 'editGroup': ui.editGroup=id; focusSel='#g-edit-'+id; break;
+    case 'delGroup':
+      if(ui.confirmDel!==id){ ui.confirmDel=id; toast('한 번 더 누르면 묶음이 삭제돼요 (할 일은 남아요)'); break; }
+      m.groups = m.groups.filter(g=>g.id!==id);
+      m.items.forEach(i=>{ if(i.secId===id) i.secId=''; });
+      ui.confirmDel=null; touch(m); save(); break;
+    case 'moveTo': { const it=findItem(id); it.secId=t.dataset.v; ui.markMenu=null; touch(m); save(); break; }
+    case 'cat': view.cat=id; break;
+    case 'manageCats': ui.editingCats=!ui.editingCats; if(ui.editingCats) focusSel='#newCatName'; break;
+    case 'addCat': addCat(); return;
+    case 'delCat':
+      if(ui.confirmDel!==id){ ui.confirmDel=id; break; }
+      state.categories = state.categories.filter(c=>c.id!==id);
+      state.memos.forEach(mm=>{ if(mm.catId===id) mm.catId=null; });
+      if(view.cat===id) view.cat='all';
+      ui.confirmDel=null; save(); break;
+    case 'openNewMemo': ui.addingMemo=true; focusSel='#newMemoTitle'; break;
+    case 'cancelNewMemo': ui.addingMemo=false; break;
+    case 'createMemo': createMemo(); return;
+    case 'open': view.name='detail'; view.memoId=id; ui.markMenu=null; ui.editItem=null; ui.editTitle=false; ui.addTo=null; ui.editGroup=null; window.scrollTo?.(0,0); break;
+    case 'back': view.name=pipWin?'board':'home'; view.memoId=null; ui.markMenu=null; ui.editItem=null; ui.editTitle=false; ui.addTo=null; ui.editGroup=null; break;
+    case 'delMemo':
+      if(ui.confirmDel!==m.id){ ui.confirmDel=m.id; break; }
+      state.memos = state.memos.filter(x=>x.id!==m.id); ui.confirmDel=null;
+      view.name=pipWin?'board':'home'; view.memoId=null; save(); toast('메모를 삭제했어요'); break;
+    case 'editTitle': ui.editTitle=true; focusSel='#titleEdit'; break;
+    case 'toggle': { const mm = t.dataset.mid ? memoOf(t.dataset.mid) : m; const it=mm?.items.find(i=>i.id===id);
+      if(it){ it.done=!it.done; touch(mm); save(); } ui.markMenu=null; break; }
+    case 'mark': ui.markMenu = ui.markMenu===id ? null : id; break;
+    case 'setColor': { const it=findItem(id); it.color = it.color===t.dataset.v ? '' : t.dataset.v; touch(m); save(); break; }
+    case 'setEmoji': { const it=findItem(id); it.emoji = it.emoji===t.dataset.v ? '' : t.dataset.v; touch(m); save(); break; }
+    case 'clearMark': { const it=findItem(id); it.color=''; it.emoji=''; ui.markMenu=null; touch(m); save(); break; }
+    case 'editItem': ui.editItem=id; ui.markMenu=null; focusSel='#edit-'+id; break;
+    case 'delItem': m.items = m.items.filter(i=>i.id!==id); ui.markMenu=null; touch(m); save(); break;
+    case 'clearDone': { const n=m.items.filter(i=>i.done).length; m.items=m.items.filter(i=>!i.done); touch(m); save(); toast(`완료한 항목 ${n}개를 지웠어요`); break; }
+    case 'export': exportData(); return;
+    case 'import': importFile.click(); return;
+  }
+  render();
+});
+
+app.addEventListener('keydown', e=>{
+  const t = e.target;
+  if(e.key==='Enter' && t.matches('.memo-card')){ t.click(); return; }
+  if(e.key==='Escape'){
+    if(t.id==='titleEdit'){ ui.editTitle=false; render(); return; }
+    if(t.classList?.contains('edit-item')){ ui.editItem=null; render(); return; }
+    if(t.id==='newItem'){ ui.addTo=null; render(); return; }
+    if(t.classList?.contains('g-input')){ ui.editGroup=null; render(); return; }
+    if(ui.markMenu){ ui.markMenu=null; render(); return; }
+    if(ui.addingMemo){ ui.addingMemo=false; render(); return; }
+  }
+  if(e.key!=='Enter' || e.isComposing || e.keyCode===229) return; // 한글 입력 중 Enter 중복 방지
+  if(t.id==='newItem'){ e.preventDefault(); addItem(); }
+  else if(t.id==='newMemoTitle'){ e.preventDefault(); createMemo(); }
+  else if(t.id==='newCatName' || t.id==='newCatEmoji'){ e.preventDefault(); addCat(); }
+  else if(t.id==='titleEdit'){ e.preventDefault(); t.blur(); }
+  else if(t.classList.contains('edit-item')){ e.preventDefault(); t.blur(); }
+  else if(t.classList.contains('g-input')){ e.preventDefault(); t.blur(); }
+});
+
+app.addEventListener('focusout', e=>{
+  const t = e.target;
+  if(t.id==='titleEdit' && ui.editTitle) commitTitle();
+  else if(t.classList?.contains('edit-item') && ui.editItem===t.dataset.id) commitItem(t.dataset.id);
+  else if(t.classList?.contains('g-input') && ui.editGroup===t.dataset.id) commitGroup(t.dataset.id);
+  else if(t.id==='newItem' && ui.addTo!==null && !t.value.trim()){
+    // 다른 버튼 클릭이 먼저 처리되도록 살짝 늦게 닫기
+    setTimeout(()=>{ const el=app.querySelector('#newItem'); if(ui.addTo!==null && (!el || (el!==el.ownerDocument.activeElement && !el.value.trim()))){ ui.addTo=null; render(); } }, 150);
+  }
+});
+
+app.addEventListener('change', e=>{
+  if(e.target.id==='pinAdd' && e.target.value){ const mm=memoOf(e.target.value); mm.pinned=true; mm.pinnedAt=Date.now(); save(); render(); return; }
+  if(e.target.id==='memoCat'){ const m=curMemo(); m.catId=e.target.value||null; touch(m); save(); render(); }
+});
+
+/* ---------- 백업 ---------- */
+function exportData(){
+  const blob = new Blob([JSON.stringify(state,null,2)], {type:'application/json'});
+  const a = document.createElement('a');
+  const d = new Date();
+  a.href = URL.createObjectURL(blob);
+  a.download = `할일메모_백업_${d.getFullYear()}${String(d.getMonth()+1).padStart(2,'0')}${String(d.getDate()).padStart(2,'0')}.json`;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+  toast('백업 파일을 저장했어요');
+}
+importFile.addEventListener('change', ()=>{
+  const f = importFile.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = ()=>{
+    try{
+      const s = JSON.parse(r.result);
+      if(!Array.isArray(s.memos) || !Array.isArray(s.categories)) throw 0;
+      state = s; save(); view={name:'home',cat:'all',memoId:null}; render(); toast('백업을 불러왔어요');
+    }catch(err){ toast('올바른 백업 파일이 아니에요'); }
+    importFile.value='';
+  };
+  r.readAsText(f);
+});
+
+/* ---------- 화면 고정 (항상 위에 떠 있는 창) ---------- */
+async function togglePin(){
+  if(pipWin){ pipWin.close(); return; }
+  if(!('documentPictureInPicture' in window)){
+    toast('이 브라우저는 화면 고정을 지원하지 않아요. 크롬 또는 엣지 최신 버전에서 열어 주세요.');
+    return;
+  }
+  // 고정한 메모가 없으면: 지금 보고 있는 메모를 고정, 아니면 안내
+  if(!state.memos.some(m=>m.pinned)){
+    const cm = view.name==='detail' && curMemo();
+    if(cm){ cm.pinned=true; cm.pinnedAt=Date.now(); save(); }
+    else if(!state.memos.length){ toast('먼저 메모를 만들어 주세요'); return; }
+    else toast('📌 고정 창에서 ‘＋ 메모 추가’로 고정할 메모를 골라 주세요');
+  }
+  try{
+    pipWin = await documentPictureInPicture.requestWindow({width:380, height:620});
+  }catch(err){ toast('고정 창을 열 수 없어요: '+(err.message||err)); pipWin=null; return; }
+  document.querySelectorAll('style, link[rel="stylesheet"]').forEach(n=>pipWin.document.head.appendChild(n.cloneNode(true)));
+  pipWin.document.title = '할 일 메모';
+  pipWin.document.body.appendChild(app);
+  document.getElementById('pinned-msg').classList.add('show');
+  prevView = {...view};
+  view = {...view, name:'board', memoId:null};
+  Object.assign(ui, {addingMemo:false, editingCats:false, markMenu:null, editItem:null, editTitle:false, addTo:null, editGroup:null, help:false});
+  pipWin.addEventListener('pagehide', ()=>{
+    document.getElementById('host').appendChild(app);
+    document.getElementById('pinned-msg').classList.remove('show');
+    pipWin = null;
+    view = prevView || {name:'home', cat:'all', memoId:null};
+    Object.assign(ui, {markMenu:null, editItem:null, editTitle:false, addTo:null, editGroup:null});
+    render();
+  });
+  render();
+}
+document.getElementById('unpinBtn').addEventListener('click', ()=>{ if(pipWin) pipWin.close(); });
+
+/* 다른 탭/창에서 바뀐 내용 반영 */
+window.addEventListener('storage', e=>{ if(e.key===KEY){ state=load(); render(); } });
+
+render();
+})();
+</script>
+</body>
+</html>
